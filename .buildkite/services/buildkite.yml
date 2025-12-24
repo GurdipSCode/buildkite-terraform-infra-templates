@@ -1,8 +1,6 @@
- .buildkite/pipeline.template.yml
 # Template Pipeline for Terraform Module Callers
 # This pipeline is designed for repos that CALL/CONSUME Terraform modules
 # NOT for the module repos themselves
-
 env:
   # ====================
   # PROJECT CONFIGURATION
@@ -44,6 +42,12 @@ env:
   MODULE_VERSION_CONSTRAINT: "{{module_version}}"  # e.g., ">= 1.0.0, < 2.0.0"
   
   # ====================
+  # HELPER SCRIPTS CONFIGURATION
+  # ====================
+  HELPER_SCRIPTS_REPO: "{{helper_scripts_repo}}"  # e.g., "git@github.com:yourorg/terraform-helper-scripts.git"
+  HELPER_SCRIPTS_REF: "{{helper_scripts_ref}}"    # e.g., "main" or "v1.2.0"
+  
+  # ====================
   # FEATURE FLAGS
   # ====================
   ENABLE_AUTO_DOCUMENTATION: "true"
@@ -52,11 +56,25 @@ env:
 
 steps:
   # ============================================================================
+  # PHASE 0: SETUP - CHECKOUT HELPER SCRIPTS
+  # ============================================================================
+  
+  - label: ":git: Checkout Helper Scripts"
+    key: "checkout-helpers"
+    commands:
+      - |
+        if (Test-Path ".\\scripts") { Remove-Item -Recurse -Force ".\\scripts" }
+        git clone --depth 1 --branch $env:HELPER_SCRIPTS_REF $env:HELPER_SCRIPTS_REPO .\\scripts
+    agents:
+      queue: "windows"
+
+  # ============================================================================
   # PHASE 1: BUILD & VALIDATION
   # ============================================================================
   
   - group: "📦 Build & Validation Phase"
     key: "build-phase"
+    depends_on: "checkout-helpers"
     steps:
       
       - label: ":hammer: Code Formatting Check"
